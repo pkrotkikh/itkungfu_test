@@ -25,12 +25,15 @@ class RegisterController extends Controller
         $user = User::create([
             'name' => trim($request->input('name')),
             'email' => strtolower($request->input('email')),
+            'phone' => $request->input('phone'),
             'password' => bcrypt($request->input('password')),
             'email_verification_token' => Str::random(32),
             'email_verified' => 1,
         ]);
 
-        \Mail::to($user->email)->send(new VerificationEmail($user));
+        if($request->input('email')) {
+            \Mail::to($user->email)->send(new VerificationEmail($user));
+        }
 
         session()->flash('message', 'Please check your email to activate your account');
 

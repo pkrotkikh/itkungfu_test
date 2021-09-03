@@ -6,24 +6,16 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Post\StorePostRequest;
 use App\Http\Requests\Post\UpdatePostRequest;
 use App\Models\Post;
-use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Client\HttpClientException;
-use Illuminate\Http\Exceptions\HttpResponseException;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
 class PostController extends Controller
 {
-    /** @var User|null $user */
-    protected $user;
-
     /**
      * PostController constructor.
      */
     public function __construct()
     {
-        $this->user = auth()->user();
     }
 
     /**
@@ -33,10 +25,11 @@ class PostController extends Controller
      */
     public function index()
     {
-        if($this->user->hasRole('admin')) {
+        $user = auth()->user();
+        if($user->hasRole('admin')) {
             $posts = Post::with(['user'])->paginate(config('paginate.posts'));
         } else {
-            $posts = $this->user->posts()->with(['user'])->paginate(config('paginate.posts'));
+            $posts = $user->posts()->with(['user'])->paginate(config('paginate.posts'));
         }
         return view('admin.posts.index', compact('posts'));
     }
@@ -59,10 +52,11 @@ class PostController extends Controller
      */
     public function store(StorePostRequest $request)
     {
+        $user = auth()->user();
         DB::beginTransaction();
         try {
             $newPost = $request->all();
-            $newPost['user_id'] = $this->user->id;
+            $newPost['user_id'] = $user->id;
             Post::create($newPost);
             DB::commit();
             return redirect()->route('dashboard');
@@ -82,8 +76,9 @@ class PostController extends Controller
      */
     public function show($postId)
     {
+        $user = auth()->user();
         $post = Post::findOrFail($postId);
-        if($this->user->can('view', $post)) {
+        if($user->can('view', $post)) {
             return view('admin.posts.single', compact('post'));
         } else {
             throw new \Exception('Access denied', 403);
@@ -100,8 +95,9 @@ class PostController extends Controller
      */
     public function edit($id)
     {
+        $user = auth()->user();
         $post = Post::findOrFail($id);
-        if($this->user->can('update', $post)) {
+        if($user->can('update', $post)) {
             return view('admin.posts.edit', compact('post'));
         } else {
             throw new \Exception('Access denied', 403);
@@ -119,8 +115,9 @@ class PostController extends Controller
      */
     public function update(UpdatePostRequest $request, $id)
     {
+        $user = auth()->user();
         $post = Post::findOrFail($id);
-        if($this->user->can('update', $post)) {
+        if($user->can('update', $post)) {
             DB::beginTransaction();
             try {
                 $postData = $request->all();
@@ -147,8 +144,9 @@ class PostController extends Controller
      */
     public function destroy($id)
     {
+        $user = auth()->user();
         $post = Post::findOrFail($id);
-        if($this->user->can('delete', $post)) {
+        if($user->can('delete', $post)) {
             DB::beginTransaction();
             try {
                 $post->delete();
@@ -171,8 +169,9 @@ class PostController extends Controller
      */
     public function delete($id)
     {
+        $user = auth()->user();
         $post = Post::withTrashed()->findOrFail($id);
-        if($this->user->can('delete', $post)) {
+        if($user->can('delete', $post)) {
             DB::beginTransaction();
             try {
                 $post->forceDelete();
@@ -195,9 +194,10 @@ class PostController extends Controller
      */
     public function toggleVisible($id)
     {
+        $user = auth()->user();
         /** @var Post $post */
         $post = Post::findOrFail($id);
-        if($this->user->can('toggleVisible', $post)) {
+        if($user->can('toggleVisible', $post)) {
             DB::beginTransaction();
             try {
                 if ($post->is_visible) {
